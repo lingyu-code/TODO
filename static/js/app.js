@@ -1,11 +1,24 @@
 // API base URL
 const API_URL = '/todos';
+const AUTH_URL = '/auth';
 
 // State
 let currentFilter = 'all';
 let todos = [];
+let authToken = null;
+let currentUser = null;
 
 // DOM elements
+const authModal = document.getElementById('authModal');
+const mainApp = document.getElementById('mainApp');
+const loginForm = document.getElementById('loginForm');
+const registerForm = document.getElementById('registerForm');
+const authToggleLink = document.getElementById('authToggleLink');
+const authToggleText = document.getElementById('authToggleText');
+const authModalTitle = document.getElementById('authModalTitle');
+const logoutBtn = document.getElementById('logoutBtn');
+const userName = document.getElementById('userName');
+
 const todoForm = document.getElementById('todoForm');
 const todoTitleInput = document.getElementById('todoTitle');
 const todoDescriptionInput = document.getElementById('todoDescription');
@@ -16,12 +29,47 @@ const filterButtons = document.querySelectorAll('.filter-btn');
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
-    loadTodos();
+    checkAuth();
     setupEventListeners();
 });
 
+// Check if user is authenticated
+function checkAuth() {
+    const token = localStorage.getItem('authToken');
+    const user = localStorage.getItem('currentUser');
+
+    if (token && user) {
+        authToken = token;
+        currentUser = JSON.parse(user);
+        showMainApp();
+    } else {
+        showAuthModal();
+    }
+}
+
+// Show auth modal
+function showAuthModal() {
+    authModal.style.display = 'flex';
+    mainApp.style.display = 'none';
+}
+
+// Show main app
+function showMainApp() {
+    authModal.style.display = 'none';
+    mainApp.style.display = 'block';
+    userName.textContent = currentUser.username;
+    loadTodos();
+}
+
 // Setup event listeners
 function setupEventListeners() {
+    // Auth events
+    loginForm.addEventListener('submit', handleLogin);
+    registerForm.addEventListener('submit', handleRegister);
+    authToggleLink.addEventListener('click', toggleAuthForm);
+    logoutBtn.addEventListener('click', handleLogout);
+
+    // Todo events
     todoForm.addEventListener('submit', handleAddTodo);
 
     filterButtons.forEach(btn => {
@@ -34,10 +82,139 @@ function setupEventListeners() {
     });
 }
 
+// Toggle between login and register forms
+function toggleAuthForm(e) {
+    e.preventDefault();
+    const isLoginVisible = loginForm.style.display !== 'none';
+
+    if (isLoginVisible) {
+        loginForm.style.display = 'none';
+        registerForm.style.display = 'block';
+        authModalTitle.textContent = 'Create Account';
+        authToggleText.innerHTML = 'Already have an account? <a href="#" id="authToggleLink">Sign in</a>';
+    } else {
+        loginForm.style.display = 'block';
+        registerForm.style.display = 'none';
+        authModalTitle.textContent = 'Welcome Back';
+        authToggleText.innerHTML = 'Don\'t have an account? <a href="#" id="authToggleLink">Sign up</a>';
+    }
+
+    // Re-attach event listener to new link
+    document.getElementById('authToggleLink').addEventListener('click', toggleAuthForm);
+}
+
+// Handle login
+async function handleLogin(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    try {
+        const response = await fetch(`${AUTH_URL}/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Login failed');
+        }
+
+        const data = await response.json();
+        authToken = data.access_token;
+        currentUser = data.user;
+
+        // Save to localStorage
+        localStorage.setItem('authToken', authToken);
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+        showToast('Login successful!', 'success');
+        showMainApp();
+
+        // Clear form
+        loginForm.reset();
+    } catch (error) {
+        showToast(error.message, 'error');
+        console.error('Login error:', error);
+    }
+}
+
+// Handle register
+async function handleRegister(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('registerUsername').value.trim();
+    const email = document.getElementById('registerEmail').value.trim();
+    const fullName = document.getElementById('registerFullName').value.trim();
+    const password = document.getElementById('registerPassword').value;
+
+    try {
+        const response = await fetch(`${AUTH_URL}/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                username,
+                email,
+                password,
+                full_name: fullName || null
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Registration failed');
+        }
+
+        const data = await response.json();
+        authToken = data.access_token;
+        currentUser = data.user;
+
+        // Save to localStorage
+        localStorage.setItem('authToken', authToken);
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+        showToast('Registration successful!', 'success');
+        showMainApp();
+
+        // Clear form
+        registerForm.reset();
+    } catch (error) {
+        showToast(error.message, 'error');
+        console.error('Registration error:', error);
+    }
+}
+
+// Handle logout
+function handleLogout() {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+    authToken = null;
+    currentUser = null;
+    todos = [];
+    showAuthModal();
+    showToast('Logged out successfully', 'success');
+}
+
 // Load todos from API
 async function loadTodos() {
     try {
-        const response = await fetch(API_URL);
+        const response = await fetch(API_URL, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.status === 401) {
+            handleLogout();
+            return;
+        }
+
         if (!response.ok) throw new Error('Failed to fetch todos');
 
         todos = await response.json();
@@ -65,6 +242,7 @@ async function handleAddTodo(e) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
             },
             body: JSON.stringify({
                 title,
@@ -73,10 +251,15 @@ async function handleAddTodo(e) {
             })
         });
 
+        if (response.status === 401) {
+            handleLogout();
+            return;
+        }
+
         if (!response.ok) throw new Error('Failed to create todo');
 
         const newTodo = await response.json();
-        todos.push(newTodo);
+        todos.unshift(newTodo);
 
         // Clear form
         todoTitleInput.value = '';
@@ -101,11 +284,17 @@ async function toggleTodo(todoId) {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
             },
             body: JSON.stringify({
                 completed: !todo.completed
             })
         });
+
+        if (response.status === 401) {
+            handleLogout();
+            return;
+        }
 
         if (!response.ok) throw new Error('Failed to update todo');
 
@@ -127,8 +316,16 @@ async function deleteTodo(todoId) {
 
     try {
         const response = await fetch(`${API_URL}/${todoId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
         });
+
+        if (response.status === 401) {
+            handleLogout();
+            return;
+        }
 
         if (!response.ok) throw new Error('Failed to delete todo');
 
@@ -151,9 +348,6 @@ function renderTodos() {
     } else if (currentFilter === 'completed') {
         filteredTodos = todos.filter(t => t.completed);
     }
-
-    // Sort by creation date (newest first)
-    filteredTodos.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     // Update count
     const activeCount = todos.filter(t => !t.completed).length;
@@ -226,8 +420,3 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
-
-// Auto-save on page unload
-window.addEventListener('beforeunload', () => {
-    // Nothing to do since we're using API
-});

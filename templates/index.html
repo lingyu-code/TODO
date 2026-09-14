@@ -3,62 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TODO App - FastAPI</title>
+    <title>TODO App - FastAPI with MySQL</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>📝 My TODO List</h1>
-            <p class="subtitle">Stay organized and productive</p>
-        </header>
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="authModalTitle">Welcome Back</h2>
+            </div>
 
-        <div class="todo-input-section">
-            <form id="todoForm">
-                <div class="input-group">
-                    <input
-                        type="text"
-                        id="todoTitle"
-                        placeholder="What needs to be done?"
-                        required
-                        autocomplete="off"
-                    >
-                    <input
-                        type="text"
-                        id="todoDescription"
-                        placeholder="Add a description (optional)"
-                        autocomplete="off"
-                    >
-                    <button type="submit" class="btn btn-primary">
-                        <span>Add Task</span>
-                    </button>
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="loginUsername">Username</label>
+                    <input type="text" id="loginUsername" required autocomplete="username">
                 </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Login</button>
             </form>
-        </div>
 
-        <div class="filter-section">
-            <div class="filter-buttons">
-                <button class="filter-btn active" data-filter="all">All</button>
-                <button class="filter-btn" data-filter="active">Active</button>
-                <button class="filter-btn" data-filter="completed">Completed</button>
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form" style="display: none;">
+                <div class="form-group">
+                    <label for="registerUsername">Username</label>
+                    <input type="text" id="registerUsername" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Email</label>
+                    <input type="email" id="registerEmail" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="registerFullName">Full Name (Optional)</label>
+                    <input type="text" id="registerFullName" autocomplete="name">
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Password</label>
+                    <input type="password" id="registerPassword" required autocomplete="new-password">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Register</button>
+            </form>
+
+            <div class="auth-toggle">
+                <p id="authToggleText">Don't have an account? <a href="#" id="authToggleLink">Sign up</a></p>
             </div>
-            <div class="stats">
-                <span id="todoCount">0 tasks</span>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" style="display: none;">
+        <div class="container">
+            <header>
+                <div class="header-content">
+                    <div>
+                        <h1>📝 My TODO List</h1>
+                        <p class="subtitle">Stay organized and productive</p>
+                    </div>
+                    <div class="user-info">
+                        <span id="userName">User</span>
+                        <button id="logoutBtn" class="btn btn-small">Logout</button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="todo-input-section">
+                <form id="todoForm">
+                    <div class="input-group">
+                        <input
+                            type="text"
+                            id="todoTitle"
+                            placeholder="What needs to be done?"
+                            required
+                            autocomplete="off"
+                        >
+                        <input
+                            type="text"
+                            id="todoDescription"
+                            placeholder="Add a description (optional)"
+                            autocomplete="off"
+                        >
+                        <button type="submit" class="btn btn-primary">
+                            <span>Add Task</span>
+                        </button>
+                    </div>
+                </form>
             </div>
-        </div>
 
-        <div id="todoList" class="todo-list">
-            <!-- Todos will be dynamically added here -->
-        </div>
+            <div class="filter-section">
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="active">Active</button>
+                    <button class="filter-btn" data-filter="completed">Completed</button>
+                </div>
+                <div class="stats">
+                    <span id="todoCount">0 tasks</span>
+                </div>
+            </div>
 
-        <div id="emptyState" class="empty-state">
-            <div class="empty-icon">✨</div>
-            <p>No tasks yet. Add one to get started!</p>
-        </div>
+            <div id="todoList" class="todo-list">
+                <!-- Todos will be dynamically added here -->
+            </div>
 
-        <footer>
-            <p>Built with <span class="heart">❤️</span> using FastAPI</p>
-        </footer>
+            <div id="emptyState" class="empty-state">
+                <div class="empty-icon">✨</div>
+                <p>No tasks yet. Add one to get started!</p>
+            </div>
+
+            <footer>
+                <p>Built with <span class="heart">❤️</span> using FastAPI & MySQL</p>
+            </footer>
+        </div>
     </div>
 
     <!-- Toast notification -->
